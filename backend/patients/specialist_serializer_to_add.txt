@@ -1,0 +1,27 @@
+"""
+Paste this after line 82 in serializers.py (after the PatientListSerializer class)
+"""
+
+class PatientSpecialistSerializer(serializers.ModelSerializer):
+    specialist_name = serializers.CharField(source='specialist.full_name', read_only=True)
+    specialist_specialization = serializers.CharField(source='specialist.get_specialization_display', read_only=True)
+    specialist_email = serializers.EmailField(source='specialist.email', read_only=True)
+    specialist_phone = serializers.CharField(source='specialist.phone', read_only=True)
+    assigned_by_name = serializers.CharField(source='assigned_by.full_name', read_only=True)
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    
+    class Meta:
+        model = PatientSpecialist
+        fields = [
+            'id', 'patient', 'patient_name', 'specialist', 'specialist_name',
+            'specialist_specialization', 'specialist_email', 'specialist_phone',
+            'assigned_by', 'assigned_by_name', 'reason', 'status', 'notes',
+            'assigned_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'assigned_at', 'updated_at', 'assigned_by']
+    
+    def create(self, validated_data):
+        # Automatically set assigned_by to the current user
+        request = self.context.get('request')
+        validated_data['assigned_by'] = request.user
+        return super().create(validated_data)
