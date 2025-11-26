@@ -1,127 +1,112 @@
-# MediCare - Plateforme de Santé Numérique
+# MediCare - Plateforme de Santé Numérique Intelligente 🏥✨
 
-Une plateforme de santé moderne développée avec Next.js, TypeScript, Shadcn UI, Axios et Zustand pour connecter patients et professionnels de santé.
+Une plateforme de santé complète et moderne qui révolutionne la relation patient-médecin grâce à l'Intelligence Artificielle. Développée avec Next.js 15, Django REST Framework, et des modèles de Machine Learning avancés.
 
-## 🩺 Fonctionnalités
+## 🚀 Fonctionnalités Principales
 
-### Pour les Patients
+### 🧠 Intelligence Artificielle & Aide au Diagnostic
+- **Prédiction des Maladies Cardiaques** : Analyse des constantes vitales (âge, tension, cholestérol, etc.) via un modèle **Scikit-learn** pour évaluer les risques cardiaques avec un score de confiance.
+- **Segmentation de Tumeurs Cérébrales** : Analyse d'images IRM par Deep Learning (**TensorFlow/Keras**) pour identifier et segmenter automatiquement les zones tumorales.
 
-- **Espace personnel sécurisé** : Accès à votre dossier médical
-- **Gestion des rendez-vous** : Prise et suivi de vos consultations
-- **Suivi médical** : Monitoring des indicateurs de santé
-- **Médicaments** : Gestion et rappels de prise
-- **Téléconsultation** : Consultations à distance
+### 👤 Pour les Patients
+- **Dossier Médical Sécurisé** : Accès centralisé à l'historique médical.
+- **Prise de Rendez-vous Intelligente** : Système de réservation avec gestion des créneaux.
+- **Suivi de Santé** : Monitoring des indicateurs vitaux et historique des prédictions IA.
+- **Gestion des Médicaments** : Ordonnances numériques et rappels.
 
-### Pour les Médecins
+### 👨‍⚕️ Pour les Médecins
+- **Tableau de Bord Pro** : Vue d'ensemble de l'activité et des patients.
+- **Gestion des Consultations** : Outils de suivi, notes de consultation et prescriptions.
+- **Aide à la Décision** : Accès instantané aux résultats des analyses IA (risques cardiaques, segmentation IRM).
+- **Statistiques** : Suivi de l'activité du cabinet.
 
-- **Tableau de bord** : Vue d'ensemble de l'activité
-- **Gestion des patients** : Accès aux dossiers médicaux
-- **Planning** : Organisation des consultations
-- **Prescriptions** : Gestion des ordonnances
-- **Statistiques** : Suivi de l'activité médicale
+## 🛠️ Stack Technique
 
-## 🚀 Technologies utilisées
+### Frontend
+- **Framework** : Next.js 15 (App Router)
+- **Langage** : TypeScript
+- **Style** : Tailwind CSS & Shadcn UI (Design Premium)
+- **État** : Zustand
+- **HTTP** : Axios
 
-- **Next.js 15** - Framework React avec App Router
-- **TypeScript** - Typage statique
-- **Tailwind CSS** - Framework CSS utilitaire
-- **Shadcn UI** - Composants UI modernes
-- **Zustand** - Gestion d'état légère
-- **Axios** - Client HTTP
-- **Lucide React** - Icônes modernes
+### Backend
+- **Framework** : Django & Django REST Framework
+- **Authentification** : JWT (JSON Web Tokens)
+- **Base de Données** : SQLite (Dev) / PostgreSQL (Prod)
+- **API** : RESTful Architecture
 
-## 🛠️ Installation et démarrage
+### IA & Data Science
+- **Machine Learning** : Scikit-learn (Classification)
+- **Deep Learning** : TensorFlow / Keras (Segmentation d'images)
+- **Traitement de Données** : Pandas, NumPy
+- **Traitement d'Images** : Pillow, OpenCV
 
-1. **Installer les dépendances** :
+## 📦 Installation et Démarrage
+
+### Prérequis
+- Node.js (v18+)
+- Python (v3.9+)
+
+### 1. Installation du Backend (Django)
 
 ```bash
-npm install
+cd backend
+python -m venv venv
+# Windows
+.\venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+# Migrations et création du superuser
+python manage.py migrate
+python manage.py createsuperuser
+
+# Lancer le serveur
+python manage.py runserver
 ```
 
-2. **Lancer le serveur de développement** :
+Le backend sera accessible sur `http://localhost:8000`.
+
+### 2. Installation du Frontend (Next.js)
 
 ```bash
+# Dans un nouveau terminal, à la racine du projet
+npm install
+
+# Lancer le serveur de développement
 npm run dev
 ```
 
-3. **Ouvrir l'application** :
-   Visitez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+L'application sera accessible sur `http://localhost:3000`.
 
-## 👥 Comptes de démonstration
-
-### Patient
-
-- **Email** : `patient@demo.com`
-- **Mot de passe** : `demo123`
-
-### Médecin
-
-- **Email** : `medecin@demo.com`
-- **Mot de passe** : `demo123`
-
-## 📱 Pages disponibles
-
-- **/** - Page d'accueil avec présentation des services
-- **/login** - Connexion pour patients et médecins
-- **/espace-patient** - Dashboard patient (authentification requise)
-- **/espace-medecin** - Dashboard médecin (authentification requise)
-
-## 🔧 Scripts disponibles
-
-```bash
-npm run dev          # Démarrage en développement
-npm run build        # Build de production
-npm run start        # Démarrage en production
-npm run lint         # Vérification du code
-```
-
-## 🏗️ Structure du projet
+## 🏗️ Structure du Projet
 
 ```
-src/
-├── app/                    # Pages Next.js (App Router)
-│   ├── login/             # Page de connexion
-│   ├── espace-patient/    # Dashboard patient
-│   ├── espace-medecin/    # Dashboard médecin
-│   └── page.tsx           # Page d'accueil
-├── components/            # Composants React
-│   ├── ui/               # Composants Shadcn UI
-│   ├── Navbar.tsx        # Navigation principale
-│   └── Footer.tsx        # Pied de page
-├── store/                # Stores Zustand
-│   └── auth.ts           # Gestion authentification
-└── lib/                  # Utilitaires
-    ├── api.ts            # Configuration Axios
-    └── utils.ts          # Fonctions utilitaires
+.
+├── backend/                 # API Django
+│   ├── appointments/       # Gestion des rendez-vous
+│   ├── health_predictions/ # IA (Modèles & Vues)
+│   ├── models/             # Fichiers modèles (.pkl, .keras)
+│   ├── patients/           # Gestion des patients
+│   └── ...
+├── src/                    # Frontend Next.js
+│   ├── app/               # Pages (App Router)
+│   ├── components/        # Composants Réutilisables
+│   ├── lib/               # Configuration API
+│   └── store/             # Gestion d'état (Zustand)
+└── ...
 ```
 
-## 🔒 Authentification
-
-L'authentification est gérée par Zustand avec des comptes de démonstration. En production, cela sera remplacé par une véritable API backend.
-
-## 🎨 Interface utilisateur
-
-L'interface utilise Shadcn UI avec Tailwind CSS pour une expérience moderne et responsive. Les composants sont optimisés pour une utilisation sur desktop et mobile.
-
-## 📋 Prochaines étapes
-
-- [ ] Intégration API backend
-- [ ] Authentification JWT réelle
-- [ ] Base de données patients/médecins
-- [ ] Système de notifications
-- [ ] Paiements en ligne
-- [ ] Téléconsultation vidéo
+## 🔒 Sécurité
+- Authentification robuste via JWT.
+- Protection des routes (Route Guards) côté frontend.
+- Permissions granulaires (IsAuthenticated, IsDoctor, etc.) côté backend.
+- Validation des données avec Zod (Front) et Serializers (Back).
 
 ## 🤝 Contribution
-
-Ce projet est en développement actif. Les contributions sont les bienvenues !
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une Pull Request.
 
 ## 📄 Licence
-
 Ce projet est sous licence MIT.
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
