@@ -45,3 +45,4 @@ class HeartDiseasePredictionInputSerializer(serializers.Serializer):
                 "Thalassemia must be one of: 1 (Normal), 3 (Normal), 6 (Fixed defect), 7 (Reversible defect)"
             )
         return value
+

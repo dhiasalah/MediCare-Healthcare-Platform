@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Users, Activity, Clock, User, BarChart3, Home } from "lucide-react";
+import { Users, Activity, Clock, User, BarChart3, Home, Brain } from "lucide-react";
 
 const navigationItems = [
   {
@@ -25,6 +25,11 @@ const navigationItems = [
     name: "Consultations",
     href: "/espace-medecin/consultations",
     icon: User,
+  },
+  {
+    name: "Analyse RMI",
+    href: "/espace-medecin/brain-tumor-analysis",
+    icon: Brain,
   },
   {
     name: "Statistiques",

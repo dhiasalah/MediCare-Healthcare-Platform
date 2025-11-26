@@ -6,7 +6,10 @@ app_name = 'health_predictions'
 
 router = DefaultRouter()
 router.register(r'predictions', views.HeartDiseasePredictionViewSet, basename='prediction')
+router.register(r'segmentation', views.BrainTumorSegmentationViewSet, basename='segmentation')
 
 urlpatterns = [
     path('', include(router.urls)),
 ]
+
+

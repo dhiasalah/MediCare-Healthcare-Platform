@@ -75,3 +75,4 @@ class HeartDiseasePrediction(models.Model):
     def __str__(self):
         prediction_text = "Disease" if self.prediction == 1 else "No Disease"
         return f"{self.patient.get_full_name()} - {prediction_text} ({self.created_at.date()})"
+

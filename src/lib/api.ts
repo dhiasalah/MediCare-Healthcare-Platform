@@ -23,8 +23,14 @@ const api = axios.create({
   },
 });
 
-// Request interceptor
-api.interceptors.request.use(
+// Create axios instance for file uploads (no default Content-Type)
+const apiFileUpload = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000",
+  timeout: 30000, // Longer timeout for file uploads
+});
+
+// Add request interceptor to file upload instance
+apiFileUpload.interceptors.request.use(
   (config) => {
     // Add auth token to requests when available (only on client side)
     if (typeof window !== "undefined") {
@@ -40,8 +46,8 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
-api.interceptors.response.use(
+// Add response interceptor to file upload instance
+apiFileUpload.interceptors.response.use(
   (response) => {
     return response;
   },
@@ -60,7 +66,7 @@ api.interceptors.response.use(
       if (refreshToken) {
         try {
           const response = await axios.post(
-            `${api.defaults.baseURL}/api/accounts/token/refresh/`,
+            `${apiFileUpload.defaults.baseURL}/api/accounts/token/refresh/`,
             {
               refresh: refreshToken,
             }
@@ -70,7 +76,7 @@ api.interceptors.response.use(
           cookieStorage.setTokens(access, refreshToken);
           originalRequest.headers.Authorization = `Bearer ${access}`;
 
-          return api(originalRequest);
+          return apiFileUpload(originalRequest);
         } catch {
           // Refresh failed, logout user
           cookieStorage.clearTokens();
@@ -84,16 +90,15 @@ api.interceptors.response.use(
     }
 
     // Enhance error with detailed message before rejecting
-    const enhancedError = new Error(getErrorMessage(error)) as Error & {
-      response?: typeof error.response;
-      originalError?: typeof error;
-    };
-    enhancedError.response = error.response;
-    enhancedError.originalError = error;
+    const enhancedError = Object.assign(new Error(getErrorMessage(error)), {
+      response: error.response,
+      originalError: error,
+    });
 
     return Promise.reject(enhancedError);
   }
 );
+
 
 // Authentication API
 export const authAPI = {
@@ -562,6 +567,14 @@ export const healthPredictionsAPI = {
   getPredictionDetail: async (id: number) => {
     const response = await api.get(
       `/api/health-predictions/predictions/${id}/`
+    );
+    return response.data;
+  },
+
+  segmentBrainTumor: async (imageFile: FormData) => {
+    const response = await apiFileUpload.post(
+      "/api/health-predictions/segmentation/segment/",
+      imageFile
     );
     return response.data;
   },

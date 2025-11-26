@@ -24,50 +24,53 @@ export function getErrorMessage(error: unknown): string {
     if (axiosError.response?.data) {
       const data = axiosError.response.data;
 
-      // Try to extract specific error message
-      if (data.detail) return String(data.detail);
-      if (data.message) return String(data.message);
-      if (data.error) return String(data.error);
+      // Defensive checks for data properties
+      if (data && typeof data === "object") {
+        // Try to extract specific error message
+        if (data.detail && typeof data.detail === "string") return data.detail;
+        if (data.message && typeof data.message === "string") return data.message;
+        if (data.error && typeof data.error === "string") return data.error;
 
-      // Handle non_field_errors (common in Django REST)
-      if (
-        Array.isArray(data.non_field_errors) &&
-        data.non_field_errors.length > 0
-      ) {
-        return data.non_field_errors.join(", ");
-      }
-
-      // Handle field-level errors (common in Django REST validation)
-      if (data.errors && typeof data.errors === "object") {
-        const fieldErrors = Object.entries(data.errors)
-          .map(([field, messages]) => {
-            const errorMsg = Array.isArray(messages)
-              ? messages.join(", ")
-              : String(messages);
-            return `${field}: ${errorMsg}`;
-          })
-          .join(" | ");
-        if (fieldErrors) return fieldErrors;
-      }
-
-      // Try to extract errors from the response data object itself
-      // (handles cases where validation errors are directly in data object)
-      const fieldMessages: string[] = [];
-      for (const [key, value] of Object.entries(data)) {
+        // Handle non_field_errors (common in Django REST)
         if (
-          key !== "detail" &&
-          key !== "message" &&
-          key !== "error" &&
-          key !== "errors" &&
-          key !== "non_field_errors" &&
-          value
+          Array.isArray(data.non_field_errors) &&
+          data.non_field_errors.length > 0
         ) {
-          const msg = Array.isArray(value) ? value.join(", ") : String(value);
-          fieldMessages.push(`${key}: ${msg}`);
+          return data.non_field_errors.join(", ");
         }
-      }
-      if (fieldMessages.length > 0) {
-        return fieldMessages.join(" | ");
+
+        // Handle field-level errors (common in Django REST validation)
+        if (data.errors && typeof data.errors === "object") {
+          const fieldErrors = Object.entries(data.errors)
+            .map(([field, messages]) => {
+              const errorMsg = Array.isArray(messages)
+                ? messages.join(", ")
+                : String(messages);
+              return `${field}: ${errorMsg}`;
+            })
+            .join(" | ");
+          if (fieldErrors) return fieldErrors;
+        }
+
+        // Try to extract errors from the response data object itself
+        // (handles cases where validation errors are directly in data object)
+        const fieldMessages: string[] = [];
+        for (const [key, value] of Object.entries(data)) {
+          if (
+            key !== "detail" &&
+            key !== "message" &&
+            key !== "error" &&
+            key !== "errors" &&
+            key !== "non_field_errors" &&
+            value
+          ) {
+            const msg = Array.isArray(value) ? value.join(", ") : String(value);
+            fieldMessages.push(`${key}: ${msg}`);
+          }
+        }
+        if (fieldMessages.length > 0) {
+          return fieldMessages.join(" | ");
+        }
       }
     }
 
@@ -99,11 +102,11 @@ export function getErrorMessage(error: unknown): string {
 
   // Handle Error objects
   if (error instanceof Error) {
-    return error.message;
+    return error.message || "Une erreur inconnue s'est produite";
   }
 
   // Fallback for unknown error types
-  return "Une erreur inconnue s'est produite";
+  return String(error) || "Une erreur inconnue s'est produite";
 }
 
 /**
