@@ -8,21 +8,34 @@ from PIL import Image
 import base64
 
 
-def simple_patchify(image, patch_size):
+def simple_patchify(image, patch_size, num_channels=3):
     """
-    Simple patchify without external library
-    Extracts patches from image
+    Patchify implementation that mimics the patchify library behavior.
+    Extracts non-overlapping patches from image and returns them in the correct order.
+    
+    Args:
+        image: Input image of shape (H, W, C) normalized to 0-1
+        patch_size: Size of each patch (e.g., 16)
+        num_channels: Number of channels (default 3 for RGB)
+        
+    Returns:
+        patches: Array of shape (num_patches, patch_size * patch_size * num_channels)
     """
-    h, w = image.shape[:2]
+    h, w, c = image.shape
+    num_patches_h = h // patch_size
+    num_patches_w = w // patch_size
+    num_patches = num_patches_h * num_patches_w
+    
+    # Extract patches in row-major order (same as patchify library)
     patches = []
+    for i in range(num_patches_h):
+        for j in range(num_patches_w):
+            patch = image[i*patch_size:(i+1)*patch_size, j*patch_size:(j+1)*patch_size, :]
+            # Flatten the patch to (patch_size * patch_size * num_channels)
+            flat_patch = patch.reshape(-1)
+            patches.append(flat_patch)
     
-    for i in range(0, h, patch_size):
-        for j in range(0, w, patch_size):
-            patch = image[i:i+patch_size, j:j+patch_size]
-            if patch.shape[0] == patch_size and patch.shape[1] == patch_size:
-                patches.append(patch)
-    
-    return np.array(patches)
+    return np.array(patches, dtype=np.float32)
 
 
 def process_image_for_model(image_file, config):
@@ -43,24 +56,26 @@ def process_image_for_model(image_file, config):
         
         # Resize to model's expected size (256x256)
         image = image.resize((config["image_size"], config["image_size"]), Image.Resampling.LANCZOS)
-        image_array = np.array(image, dtype=np.float32)
         
-        # Normalize to 0-1 range
-        image_normalized = image_array / 255.0
+        # Keep original as uint8 for display
+        original_image_array = np.array(image, dtype=np.uint8)
         
-        # Extract patches - UNETR expects flattened patches
+        # Normalize to 0-1 range for model input
+        image_normalized = original_image_array.astype(np.float32) / 255.0
+        
+        # Extract patches using the corrected patchify function
+        # This mimics: patches = patchify(image, (16, 16, 3), 16)
+        # Then: patches = np.reshape(patches, (256, 768))
         patch_size = config["patch_size"]  # 16
-        patches = simple_patchify(image_normalized, patch_size)
+        num_channels = config["num_channels"]  # 3
         
-        # Reshape patches for UNETR model input
-        # Expected: (num_patches, patch_size * patch_size * channels) = (256, 768)
-        num_patches = patches.shape[0]
-        flat_patches = patches.reshape(num_patches, -1).astype(np.float32)
+        # Get flattened patches: shape (256, 768) for 256x256 image with 16x16 patches
+        flat_patches = simple_patchify(image_normalized, patch_size, num_channels)
         
         # Add batch dimension: (1, 256, 768)
         batch_patches = np.expand_dims(flat_patches, axis=0)
         
-        return batch_patches, image_array
+        return batch_patches, original_image_array
         
     except Exception as e:
         raise ValueError(f"Error processing image: {str(e)}")
@@ -71,7 +86,7 @@ def postprocess_segmentation(prediction, config):
     Convert model prediction to segmentation mask image.
     
     Args:
-        prediction: Model output (probability map) - shape should be (h, w, 1) or (h, w)
+        prediction: Model output (probability map) - shape should be (1, h, w, 1) or similar
         config: Configuration dictionary
         
     Returns:
@@ -79,41 +94,33 @@ def postprocess_segmentation(prediction, config):
     """
     try:
         # Handle different prediction shapes
+        # Model output is typically (batch, height, width, channels) = (1, 256, 256, 1)
         if len(prediction.shape) == 4:
-            prediction = prediction[0]  # Remove batch dimension
+            prediction = prediction[0]  # Remove batch dimension -> (256, 256, 1)
         
         if len(prediction.shape) == 3 and prediction.shape[-1] == 1:
-            prediction = prediction[:, :, 0]  # Remove channel dimension
+            prediction = prediction[:, :, 0]  # Remove channel dimension -> (256, 256)
         
-        # Ensure correct size (256x256)
+        # Ensure the prediction is in the correct shape
         if prediction.shape != (config["image_size"], config["image_size"]):
-            # Use PIL to resize if needed
-            pred_image = Image.fromarray((prediction * 255).astype(np.uint8))
+            # Resize if needed using PIL
+            pred_normalized = np.clip(prediction, 0, 1)
+            pred_image = Image.fromarray((pred_normalized * 255).astype(np.uint8))
             pred_image = pred_image.resize(
                 (config["image_size"], config["image_size"]), 
                 Image.Resampling.LANCZOS
             )
             prediction = np.array(pred_image, dtype=np.float32) / 255.0
         
-        # Normalize prediction to 0-1 range if not already
-        pred_min = np.min(prediction)
-        pred_max = np.max(prediction)
-        if pred_max > pred_min:
-            prediction = (prediction - pred_min) / (pred_max - pred_min)
+        # The model outputs values between 0 and 1 (sigmoid activation)
+        # Simply scale to 0-255 range for visualization
+        # Values close to 1 indicate tumor regions
+        prediction = np.clip(prediction, 0, 1)
         
-        # Apply a more sensitive threshold to capture smaller tumors
-        # Use adaptive threshold based on the distribution
-        threshold = np.percentile(prediction, 50)  # Use median as threshold
-        if threshold == 0:
-            threshold = 0.5  # Fallback to 50% if all zeros
+        # Convert to 0-255 range for display
+        segmentation_mask = (prediction * 255).astype(np.uint8)
         
-        # Convert to 0-255 range
-        segmentation_mask = (np.clip(prediction, 0, 1) * 255).astype(np.uint8)
-        
-        # Apply threshold for binary mask (more sensitive)
-        binary_mask = np.where(prediction > threshold, 255, 0).astype(np.uint8)
-        
-        return binary_mask
+        return segmentation_mask
         
     except Exception as e:
         raise ValueError(f"Error postprocessing segmentation: {str(e)}")
