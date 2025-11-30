@@ -23,6 +23,76 @@ const api = axios.create({
   },
 });
 
+// Add request interceptor to main api instance
+api.interceptors.request.use(
+  (config) => {
+    // Add auth token to requests when available (only on client side)
+    if (typeof window !== "undefined") {
+      const token = cookieStorage.getAccessToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to main api instance for token refresh
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Handle 401 errors and token refresh (only on client side)
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      typeof window !== "undefined"
+    ) {
+      originalRequest._retry = true;
+
+      const refreshToken = cookieStorage.getRefreshToken();
+      if (refreshToken) {
+        try {
+          const response = await axios.post(
+            `${api.defaults.baseURL}/api/accounts/token/refresh/`,
+            {
+              refresh: refreshToken,
+            }
+          );
+
+          const { access } = response.data;
+          cookieStorage.setTokens(access, refreshToken);
+          originalRequest.headers.Authorization = `Bearer ${access}`;
+
+          return api(originalRequest);
+        } catch {
+          // Refresh failed, logout user
+          cookieStorage.clearTokens();
+          window.location.href = "/login";
+        }
+      } else {
+        // No refresh token, redirect to login
+        cookieStorage.clearTokens();
+        window.location.href = "/login";
+      }
+    }
+
+    // Enhance error with detailed message before rejecting
+    const enhancedError = Object.assign(new Error(getErrorMessage(error)), {
+      response: error.response,
+      originalError: error,
+    });
+
+    return Promise.reject(enhancedError);
+  }
+);
+
 // Create axios instance for file uploads (no default Content-Type)
 const apiFileUpload = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000",
@@ -98,7 +168,6 @@ apiFileUpload.interceptors.response.use(
     return Promise.reject(enhancedError);
   }
 );
-
 
 // Authentication API
 export const authAPI = {

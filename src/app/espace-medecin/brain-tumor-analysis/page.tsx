@@ -241,27 +241,25 @@ export default function BrainTumorAnalysis() {
             <CardContent>
               <div className="space-y-4">
                 {/* Comparison Image */}
-                <div className="flex justify-center">
-                  <div className="w-full max-w-2xl">
-                    <h3 className="font-medium text-gray-900 mb-2">
-                      Comparaison (Image Originale | Segmentation)
-                    </h3>
-                    <div className="relative w-full border rounded-lg overflow-hidden bg-gray-100">
-                      <img
-                        src={`data:image/png;base64,${result.comparison_image}`}
-                        alt="Comparison"
-                        className="w-full h-auto"
-                        onError={(e) => console.error("Comparison image failed to load:", e)}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      ℹ️ Gauche: Image originale | Droite: Masque de segmentation (zones blanches = tumeur détectée)
-                    </p>
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">
+                    Comparaison (Image Originale | Segmentation)
+                  </h3>
+                  <div className="relative w-full border rounded-lg overflow-hidden bg-gray-100">
+                    <img
+                      src={`data:image/png;base64,${result.comparison_image}`}
+                      alt="Comparison"
+                      className="w-full h-auto"
+                      onError={(e) => console.error("Comparison image failed to load:", e)}
+                    />
                   </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    ℹ️ Gauche: Image originale | Droite: Masque de segmentation (zones blanches = tumeur détectée)
+                  </p>
                 </div>
 
                 {/* Original Image */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h3 className="font-medium text-gray-900 mb-2">Image Originale</h3>
                     <div className="relative w-full border rounded-lg overflow-hidden bg-gray-100">

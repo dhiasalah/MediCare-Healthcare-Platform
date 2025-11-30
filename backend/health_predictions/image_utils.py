@@ -43,10 +43,10 @@ def process_image_for_model(image_file, config):
         
         # Resize to model's expected size (256x256)
         image = image.resize((config["image_size"], config["image_size"]), Image.Resampling.LANCZOS)
-        image_array = np.array(image, dtype=np.uint8)  # Store as uint8 for proper display
+        image_array = np.array(image, dtype=np.float32)
         
-        # Normalize to 0-1 range for model input
-        image_normalized = image_array.astype(np.float32) / 255.0
+        # Normalize to 0-1 range
+        image_normalized = image_array / 255.0
         
         # Extract patches - UNETR expects flattened patches
         patch_size = config["patch_size"]  # 16
@@ -101,8 +101,17 @@ def postprocess_segmentation(prediction, config):
         if pred_max > pred_min:
             prediction = (prediction - pred_min) / (pred_max - pred_min)
         
-        # Apply simple binary threshold at 0.5
-        binary_mask = (prediction > 0.5).astype(np.uint8) * 255
+        # Apply a more sensitive threshold to capture smaller tumors
+        # Use adaptive threshold based on the distribution
+        threshold = np.percentile(prediction, 50)  # Use median as threshold
+        if threshold == 0:
+            threshold = 0.5  # Fallback to 50% if all zeros
+        
+        # Convert to 0-255 range
+        segmentation_mask = (np.clip(prediction, 0, 1) * 255).astype(np.uint8)
+        
+        # Apply threshold for binary mask (more sensitive)
+        binary_mask = np.where(prediction > threshold, 255, 0).astype(np.uint8)
         
         return binary_mask
         

@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Q, Count
-from .models import Patient, PatientSpecialist, PatientMedicalRecord
+from .models import Patient, PatientSpecialist, PatientMedicalRecord, Medicament
 from .serializers import (
     PatientSerializer, 
     PatientCreateSerializer, 
@@ -12,7 +12,8 @@ from .serializers import (
     PatientSpecialistSerializer,
     AssignSpecialistSerializer,
     PatientMedicalRecordSerializer,
-    PatientMedicalRecordListSerializer
+    PatientMedicalRecordListSerializer,
+    MedicamentSerializer
 )
 from accounts.models import User
 from accounts.serializers import UserSerializer
@@ -523,3 +524,86 @@ def my_medical_records(request):
         return Response(serializer.data)
     except Patient.DoesNotExist:
         return Response([], status=status.HTTP_200_OK)
+
+
+class MedicamentListCreateView(generics.ListCreateAPIView):
+    """
+    List medicaments for a patient or create a new medicament.
+    """
+    serializer_class = MedicamentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['patient', 'doctor', 'status']
+    ordering_fields = ['start_date', 'created_at']
+    ordering = ['-start_date']
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == 'doctor':
+            return Medicament.objects.filter(
+                patient__in=Patient.objects.filter(
+                    Q(doctor=user) | Q(primary_doctor=user)
+                )
+            )
+        elif user.user_type == 'patient':
+            try:
+                patient = Patient.objects.get(email=user.email)
+                return Medicament.objects.filter(patient=patient)
+            except Patient.DoesNotExist:
+                return Medicament.objects.none()
+        return Medicament.objects.none()
+
+class MedicamentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update or delete a medicament.
+    """
+    serializer_class = MedicamentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == 'doctor':
+            return Medicament.objects.filter(
+                patient__in=Patient.objects.filter(
+                    Q(doctor=user) | Q(primary_doctor=user)
+                )
+            )
+        elif user.user_type == 'patient':
+            try:
+                patient = Patient.objects.get(email=user.email)
+                return Medicament.objects.filter(patient=patient)
+            except Patient.DoesNotExist:
+                return Medicament.objects.none()
+        return Medicament.objects.none()
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def my_medicaments(request):
+    """
+    Get all medicaments for the authenticated patient.
+    Auto-completes expired medications.
+    """
+    from datetime import date
+    
+    if request.user.user_type != 'patient':
+        return Response(
+            {'error': 'Seuls les patients peuvent accéder à cette ressource'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        patient = Patient.objects.get(email=request.user.email)
+        
+        # Auto-complete expired medications
+        Medicament.objects.filter(
+            patient=patient,
+            status='active',
+            end_date__lt=date.today()
+        ).update(status='completed')
+        
+        medicaments = Medicament.objects.filter(patient=patient).order_by('-start_date')
+        serializer = MedicamentSerializer(medicaments, many=True)
+        return Response(serializer.data)
+    except Patient.DoesNotExist:
+        return Response([], status=status.HTTP_200_OK)
+

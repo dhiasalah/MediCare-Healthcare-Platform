@@ -128,3 +128,22 @@ export const DOCUMENT_TYPES = [
 ] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number]["value"];
+
+export interface Medicament {
+  id: number;
+  patient: number;
+  doctor: number | null;
+  doctor_name: string | null;
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration_days: number | null;
+  start_date: string;
+  end_date: string | null;
+  instructions: string | null;
+  status: "active" | "stopped" | "completed";
+  is_expired: boolean;
+  days_remaining: number | null;
+  created_at: string;
+  updated_at: string;
+}

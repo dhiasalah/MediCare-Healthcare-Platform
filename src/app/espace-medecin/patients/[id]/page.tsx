@@ -25,12 +25,24 @@ import {
   Eye,
   Edit,
   Droplet,
+  Clock,
+  CheckCircle2,
+  PauseCircle,
+  XCircle,
+  Timer,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  History,
 } from "lucide-react";
 import DoctorLayout from "@/components/DoctorLayout";
 import { Patient } from "@/types";
 import { usePatients } from "@/hooks/usePatients";
 import api, { patientsAPI } from "@/lib/api";
 import { showToast } from "@/hooks/useToast";
+import { PrescribeMedicamentModal } from "@/components/doctor/PrescribeMedicamentModal";
+import { Medicament } from "@/types/patient";
+import { Pill, Plus } from "lucide-react";
 
 interface Document {
   id: number;
@@ -66,6 +78,16 @@ export default function PatientDetailsPage() {
   );
   const [loadingDocuments, setLoadingDocuments] = useState(true);
   const [loadingMedicalRecord, setLoadingMedicalRecord] = useState(true);
+  const [medicaments, setMedicaments] = useState<Medicament[]>([]);
+  const [loadingMedicaments, setLoadingMedicaments] = useState(true);
+  const [isPrescribeModalOpen, setIsPrescribeModalOpen] = useState(false);
+
+  // Display management states
+  const [showAllActiveMeds, setShowAllActiveMeds] = useState(false);
+  const [showHistoryMeds, setShowHistoryMeds] = useState(false);
+  const [showAllDocuments, setShowAllDocuments] = useState(false);
+
+  const ITEMS_LIMIT = 3; // Number of items to show initially
 
   useEffect(() => {
     if (!isLoading && patients.length > 0) {
@@ -115,6 +137,33 @@ export default function PatientDetailsPage() {
 
     if (patientId) {
       fetchMedicalRecord();
+    }
+  }, [patientId]);
+
+  const fetchMedicaments = async () => {
+    try {
+      const response = await api.get(
+        `/api/patients/medicaments/?patient=${patientId}`
+      );
+      // Handle paginated response
+      if (response.data.results && Array.isArray(response.data.results)) {
+        setMedicaments(response.data.results);
+      } else if (Array.isArray(response.data)) {
+        setMedicaments(response.data);
+      } else {
+        setMedicaments([]);
+      }
+    } catch (error) {
+      console.error("Error fetching medicaments:", error);
+      setMedicaments([]);
+    } finally {
+      setLoadingMedicaments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (patientId) {
+      fetchMedicaments();
     }
   }, [patientId]);
 
@@ -598,92 +647,374 @@ export default function PatientDetailsPage() {
           </Card>
         </div>
 
-        {/* Documents Section */}
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Documents médicaux
-            </CardTitle>
-            <CardDescription>
-              Tous les documents associés à ce patient
-            </CardDescription>
+        {/* Medicaments Section */}
+        <Card className="overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-sm">
+                  <Pill className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Traitements</CardTitle>
+                  <CardDescription className="mt-1">
+                    {medicaments.filter((m) => m.status === "active").length}{" "}
+                    actif(s) ·{" "}
+                    {medicaments.filter((m) => m.status !== "active").length}{" "}
+                    historique
+                  </CardDescription>
+                </div>
+              </div>
+              <Button
+                onClick={() => setIsPrescribeModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Prescrire
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
+            {loadingMedicaments ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
+              </div>
+            ) : medicaments.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Pill className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Aucun traitement
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  Ce patient n&apos;a pas de traitement en cours
+                </p>
+                <Button
+                  onClick={() => setIsPrescribeModalOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Prescrire un médicament
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Active Medications */}
+                {medicaments.filter((m) => m.status === "active").length >
+                  0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <h3 className="font-semibold text-gray-900">
+                          En cours
+                        </h3>
+                        <span className="bg-emerald-100 text-emerald-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                          {
+                            medicaments.filter((m) => m.status === "active")
+                              .length
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {medicaments
+                        .filter((m) => m.status === "active")
+                        .slice(0, showAllActiveMeds ? undefined : ITEMS_LIMIT)
+                        .map((med) => (
+                          <div
+                            key={med.id}
+                            className="bg-white border border-emerald-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-200"
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-11 w-11 rounded-xl flex items-center justify-center shadow-sm bg-gradient-to-br from-emerald-400 to-teal-500">
+                                  <Pill className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">
+                                    {med.name}
+                                  </h4>
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">
+                                    <CheckCircle2 className="h-3 w-3" /> Actif
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500">Dosage:</span>
+                                <span className="font-medium">
+                                  {med.dosage}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500">
+                                  Fréquence:
+                                </span>
+                                <span className="font-medium">
+                                  {med.frequency}
+                                </span>
+                              </div>
+                              {med.duration_days && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500">Durée:</span>
+                                  <span className="font-medium">
+                                    {med.duration_days} jours
+                                  </span>
+                                  {med.days_remaining !== null &&
+                                    med.days_remaining !== undefined &&
+                                    med.days_remaining > 0 && (
+                                      <span className="text-xs text-orange-600 font-medium">
+                                        ({med.days_remaining}j restants)
+                                      </span>
+                                    )}
+                                </div>
+                              )}
+                            </div>
+                            {med.instructions && (
+                              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 mt-3">
+                                <p className="text-xs text-amber-700 line-clamp-2">
+                                  {med.instructions}
+                                </p>
+                              </div>
+                            )}
+                            <div className="mt-3 pt-2 border-t border-gray-100 text-xs text-gray-500 flex items-center justify-between">
+                              <span>
+                                {new Date(med.created_at).toLocaleDateString(
+                                  "fr-FR"
+                                )}
+                              </span>
+                              {med.doctor_name && (
+                                <span>{med.doctor_name}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    {medicaments.filter((m) => m.status === "active").length >
+                      ITEMS_LIMIT && (
+                      <Button
+                        variant="ghost"
+                        className="w-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                        onClick={() => setShowAllActiveMeds(!showAllActiveMeds)}
+                      >
+                        {showAllActiveMeds ? (
+                          <>
+                            <ChevronUp className="h-4 w-4 mr-2" /> Voir moins
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4 mr-2" /> Voir tout (
+                            {medicaments.filter((m) => m.status === "active")
+                              .length - ITEMS_LIMIT}{" "}
+                            de plus)
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* History Medications */}
+                {medicaments.filter((m) => m.status !== "active").length >
+                  0 && (
+                  <div className="space-y-4">
+                    <button
+                      onClick={() => setShowHistoryMeds(!showHistoryMeds)}
+                      className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 bg-gray-200 rounded-lg flex items-center justify-center">
+                          <History className="h-4 w-4 text-gray-600" />
+                        </div>
+                        <h3 className="font-semibold text-gray-700">
+                          Historique
+                        </h3>
+                        <span className="bg-gray-200 text-gray-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                          {
+                            medicaments.filter((m) => m.status !== "active")
+                              .length
+                          }
+                        </span>
+                      </div>
+                      {showHistoryMeds ? (
+                        <ChevronUp className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-gray-500" />
+                      )}
+                    </button>
+
+                    {showHistoryMeds && (
+                      <div className="space-y-2 pl-2">
+                        {medicaments
+                          .filter((m) => m.status !== "active")
+                          .map((med) => (
+                            <div
+                              key={med.id}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-gray-200">
+                                  <Pill className="h-4 w-4 text-gray-500" />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">
+                                    {med.name}
+                                  </h4>
+                                  <p className="text-xs text-gray-500">
+                                    {med.dosage} · {med.frequency}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${
+                                    med.status === "stopped"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-gray-100 text-gray-700"
+                                  }`}
+                                >
+                                  {med.status === "stopped"
+                                    ? "Arrêté"
+                                    : "Terminé"}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(med.created_at).toLocaleDateString(
+                                    "fr-FR"
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Documents Section */}
+        <Card className="overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-sm">
+                <FileText className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Documents médicaux</CardTitle>
+                <CardDescription className="mt-1">
+                  {documents.length} document(s) disponible(s)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
             {loadingDocuments ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
               </div>
             ) : documents.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 font-medium">
-                  Aucun document disponible
-                </p>
-                <p className="text-sm text-gray-400 mt-2">
+              <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Aucun document
+                </h3>
+                <p className="text-gray-500">
                   Les documents ajoutés apparaîtront ici
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">
-                          {doc.title}
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          {doc.description}
-                        </p>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
-                          <span>{getDocumentTypeLabel(doc.document_type)}</span>
-                          <span>•</span>
-                          <span>
-                            {new Date(doc.uploaded_at).toLocaleDateString(
-                              "fr-FR"
-                            )}
-                          </span>
-                          {doc.uploaded_by_name && (
-                            <>
-                              <span>•</span>
-                              <span>Par: {doc.uploaded_by_name}</span>
-                            </>
-                          )}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {documents
+                    .slice(0, showAllDocuments ? undefined : ITEMS_LIMIT)
+                    .map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                            <FileText className="h-5 w-5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-900 truncate text-sm">
+                              {doc.title}
+                            </h4>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <span className="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+                                {getDocumentTypeLabel(doc.document_type)}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {new Date(doc.uploaded_at).toLocaleDateString(
+                                  "fr-FR"
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                              onClick={() => window.open(doc.file, "_blank")}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-indigo-50 hover:text-indigo-600"
+                              onClick={() => handleDownload(doc)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(doc.file, "_blank")}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Voir
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(doc)}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Télécharger
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                    ))}
+                </div>
+
+                {documents.length > ITEMS_LIMIT && (
+                  <Button
+                    variant="ghost"
+                    className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    onClick={() => setShowAllDocuments(!showAllDocuments)}
+                  >
+                    {showAllDocuments ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 mr-2" /> Voir moins
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" /> Voir tout (
+                        {documents.length - ITEMS_LIMIT} de plus)
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {patient && (
+        <PrescribeMedicamentModal
+          isOpen={isPrescribeModalOpen}
+          onClose={() => setIsPrescribeModalOpen(false)}
+          onSuccess={fetchMedicaments}
+          patientId={patient.id}
+        />
+      )}
     </DoctorLayout>
   );
 }

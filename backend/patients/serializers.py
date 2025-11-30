@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Patient, PatientSpecialist, PatientMedicalRecord
+from .models import Patient, PatientSpecialist, PatientMedicalRecord, Medicament
 
 class PatientSerializer(serializers.ModelSerializer):
     age = serializers.ReadOnlyField()
@@ -236,3 +236,48 @@ class PatientMedicalRecordListSerializer(serializers.ModelSerializer):
             'waist_circumference', 'bmi', 'health_status', 'recorded_at'
         ]
         read_only_fields = ['id', 'bmi']
+
+
+
+class MedicamentSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source='doctor.full_name', read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    days_remaining = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Medicament
+        fields = [
+            'id', 'patient', 'doctor', 'doctor_name', 'name', 'dosage',
+            'frequency', 'duration_days', 'start_date', 'end_date',
+            'instructions', 'status', 'is_expired', 'days_remaining',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'doctor', 'doctor_name', 'end_date', 'is_expired', 'days_remaining', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'patient': {'required': False}  # Make patient optional, we'll set it automatically
+        }
+    
+    def get_days_remaining(self, obj):
+        """Calculate remaining days for active medications"""
+        from datetime import date
+        if obj.end_date and obj.status == 'active':
+            remaining = (obj.end_date - date.today()).days
+            return max(0, remaining)
+        return None
+    
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            # If doctor is creating, set doctor field
+            if request.user.user_type == 'doctor':
+                validated_data['doctor'] = request.user
+            # If patient is creating, set patient field automatically
+            elif request.user.user_type == 'patient':
+                from .models import Patient
+                try:
+                    patient = Patient.objects.get(email=request.user.email)
+                    validated_data['patient'] = patient
+                except Patient.DoesNotExist:
+                    raise serializers.ValidationError({'patient': 'Aucun dossier patient trouvé pour cet utilisateur'})
+        return super().create(validated_data)
+

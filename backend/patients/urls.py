@@ -26,4 +26,9 @@ urlpatterns = [
     path('medical-records/<int:pk>/', views.PatientMedicalRecordDetailView.as_view(), name='medical_record_detail'),
     path('<int:patient_id>/medical-records/latest/', views.patient_latest_medical_record, name='latest_medical_record'),
     path('my-medical-records/', views.my_medical_records, name='my_medical_records'),
+    
+    # Medicaments endpoints
+    path('medicaments/', views.MedicamentListCreateView.as_view(), name='medicament_list_create'),
+    path('medicaments/<int:pk>/', views.MedicamentDetailView.as_view(), name='medicament_detail'),
+    path('my-medicaments/', views.my_medicaments, name='my_medicaments'),
 ]

@@ -284,3 +284,76 @@ class PatientMedicalRecord(models.Model):
     
     def __str__(self):
         return f"Dossier médical - {self.patient.full_name} ({self.recorded_at.date() if self.recorded_at else 'N/A'})"
+
+
+class Medicament(models.Model):
+    """
+    Represents a medication prescribed to a patient.
+    Can be added by a doctor or the patient (if self-medication, though usually doctor).
+    """
+    STATUS_CHOICES = [
+        ('active', 'En cours'),
+        ('stopped', 'Arrêté'),
+        ('completed', 'Terminé'),
+    ]
+
+    patient = models.ForeignKey(
+        Patient,
+        on_delete=models.CASCADE,
+        related_name='medicaments',
+        verbose_name='Patient'
+    )
+    
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={'user_type': 'doctor'},
+        related_name='prescribed_medicaments',
+        verbose_name='Médecin prescripteur'
+    )
+    
+    name = models.CharField(max_length=200, verbose_name='Nom du médicament')
+    dosage = models.CharField(max_length=100, verbose_name='Dosage')
+    frequency = models.CharField(max_length=100, verbose_name='Fréquence')
+    duration_days = models.PositiveIntegerField(verbose_name='Durée (jours)', blank=True, null=True)
+    
+    start_date = models.DateField(verbose_name='Date de début')
+    end_date = models.DateField(verbose_name='Date de fin', blank=True, null=True)
+    
+    instructions = models.TextField(verbose_name='Instructions', blank=True, null=True)
+    
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='active',
+        verbose_name='Statut'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'patient_medicaments'
+        verbose_name = 'Médicament'
+        verbose_name_plural = 'Médicaments'
+        ordering = ['-start_date']
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate end_date from start_date + duration_days
+        if self.duration_days and self.start_date:
+            from datetime import timedelta
+            self.end_date = self.start_date + timedelta(days=self.duration_days)
+        super().save(*args, **kwargs)
+    
+    @property
+    def is_expired(self):
+        """Check if the medication has expired based on end_date"""
+        from datetime import date
+        if self.end_date:
+            return date.today() > self.end_date
+        return False
+    
+    def __str__(self):
+        return f"{self.name} - {self.patient.full_name}"
